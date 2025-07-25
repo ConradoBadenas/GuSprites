@@ -1,0 +1,139 @@
+REM @options --array-base 1 --string-base 1 --optimize 4 --org 32768 --heap-size 256 --explicit --strict -D HIDE_LOAD_MSG
+
+#define PRECOMPUTED_SPRITES
+'A sprites file will be included: preshifted "Sprites.zxbas" or unshifted "sprites.bas"
+'Also, Create*Sprite() functions must NOT be used
+
+#define STORE_UNSHIFTED_SPRITES
+'Sprites will be stored unshifted: each 1x1,1x2,2x2 sprite
+'will only use 8,16,32 bytes in SPRITE_BUFFER
+
+#define SPRITE_XY_IN_PIXELS
+'Sprite X,Y coordinates are measured in pixels
+'Option STORE_UNSHIFTED_SPRITES is mandatory for SPRITE_XY_IN_PIXELS
+
+#include "GuSprites.zxbas"
+
+border 2
+cls
+
+Dim tileSet(4,8) as uByte => { _ 
+    {0,0,0,0,0,0,0,0}, _
+    { 0,60,66,66,66,66,60,0 }, _
+    { 0,24,24,36,66,66,126,0 }, _
+    { 12,34,44,65,93,234,26,0 } _
+}
+
+InitGFXLib()
+
+SetTileset(@tileSet)
+
+dim x as uByte
+dim y as uByte
+
+for y = 0 to 23
+        
+    if y mod 2 = 0 then
+        for x = 0 to 31 step 2
+            SetTile(1, 52, x, y)
+        next x
+    else
+        for x = 1 to 31 step 2
+            SetTile(2, 56, x, y)
+        next x
+    end if
+
+next y
+
+FillWithTile(3,2,2,CREATE_ATTRIB(6,2,1,0),4,4)
+
+dim xs(12) as uByte
+dim ys(12) as uByte
+dim xss(12) as byte
+dim yss(12) as byte
+dim b as ubyte
+dim c as byte = 1
+xss(1) = 0
+yss(1) = 1
+xss(2) = 0
+yss(2) = -1
+xss(3) = 1
+yss(3) = 0
+xss(4) = -1
+yss(4) = 0
+
+xss(5) = 1
+yss(5) = 1
+xss(6) = -1
+yss(6) = 1
+xss(7) = 1
+yss(7) = -1
+xss(8) = -1
+yss(8) = -1
+xss(9) = 1
+yss(9) = 2
+xss(10) = -1
+yss(10) = -2
+xss(11) = -1
+yss(11) = 2
+xss(12) = 1
+yss(12) = -2
+
+xs(1) = 40
+ys(1) = 40
+xs(2) = 40
+ys(2) = 40
+xs(3) = 40
+ys(3) = 40
+xs(4) = 40
+ys(4) = 40
+xs(5) = 40
+ys(5) = 40
+xs(6) = 40
+ys(6) = 40
+xs(7) = 40
+ys(7) = 40
+xs(8) = 40
+ys(8) = 40
+xs(9) = 40
+ys(9) = 40
+xs(10) = 40
+ys(10) = 40
+xs(11) = 40
+ys(11) = 40
+xs(12) = 40
+ys(12) = 40
+
+do
+
+for b = 0 to 3
+
+    xs(b * 3 + 1) = xs(b * 3 + 1) + xss(b * 3 + 1)
+    ys(b * 3 + 1) = ys(b * 3 + 1) + yss(b * 3 + 1)
+
+    if ys(b * 3 + 1) >= 176 or ys(b * 3 + 1) <= 0 then yss(b * 3 + 1) = -yss(b * 3 + 1)
+    if xs(b * 3 + 1) >= 240 or xs(b * 3 + 1) <= 0 then xss(b * 3 + 1) = -xss(b * 3 + 1)
+
+    Draw1x1Sprite(1, xs(b * 3 + 1), ys(b * 3 + 1))
+
+    xs(b * 3 + 2) = xs(b * 3 + 2) + xss(b * 3 + 2)
+    ys(b * 3 + 2) = ys(b * 3 + 2) + yss(b * 3 + 2)
+
+    if ys(b * 3 + 2) >= 176 or ys(b * 3 + 2) <= 0 then yss(b * 3 + 2) = -yss(b * 3 + 2)
+    if xs(b * 3 + 2) >= 240 or xs(b * 3 + 2) <= 0 then xss(b * 3 + 2) = -xss(b * 3 + 2)
+
+    Draw1x2Sprite(2, xs(b * 3 + 2), ys(b * 3 + 2))
+
+    xs(b * 3 + 3) = xs(b * 3 + 3) + xss(b * 3 + 3)
+    ys(b * 3 + 3) = ys(b * 3 + 3) + yss(b * 3 + 3)
+
+    if ys(b * 3 + 3) >= 176 or ys(b * 3 + 3) <= 0 then yss(b * 3 + 3) = -yss(b * 3 + 3)
+    if xs(b * 3 + 3) >= 240 or xs(b * 3 + 3) <= 0 then xss(b * 3 + 3) = -xss(b * 3 + 3)
+
+    Draw2x2Sprite(3, xs(b * 3 + 3), ys(b * 3 + 3))
+
+next b
+
+RenderFrame()
+
+loop
