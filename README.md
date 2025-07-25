@@ -19,6 +19,23 @@ load/unload sprites from the library as needed, you aren't restricted to a singl
 
 The library is completely free for use but a mention would be appreciated ;)
 
+## UPDATE 2025-07-25
+
+Added option and code to draw sprites in any place of the screen by using Sprite coordinates X,Y measured In Pixels.
+
+This feature will allow the programmer to use numbers from 0 to almost 250 for the X-coordinate,
+and numbers from 0 to almost 190 for the Y-coordinate of a sprite
+(0-240 and 0-176 for a 2x2 sprite),
+which results in the sprite being drawn in any place of the screen.
+Coordinates for tiles are measured in characters, as usual.
+
+If the programmer enables SPRITE_XY_IN_PIXELS, unshifted sprites MUST be used:
+if SXIP is enabled but SUS is not, then the library will enable SUS automatically.
+
+Also, a file to test this new feature is added (TestLib-PS-SXIP.zxbas),
+and all test files are compiled to check that all features work perfectly with this new version of the library:
+each ZXBAS test file has a companion ZIP which includes resulting files (ASM, Mmap.TXT, and TAP files) from compiling.
+
 ## UPDATE 2025-07-07&12
 
  7th July: Added option and code to Store Unshifted Sprites (SUS from now) in the library sprite-buffer.
