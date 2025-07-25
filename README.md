@@ -19,6 +19,21 @@ load/unload sprites from the library as needed, you aren't restricted to a singl
 
 The library is completely free for use but a mention would be appreciated ;)
 
+## UPDATE 2025-07-07&12
+
+ 7th July: Added option and code to Store Unshifted Sprites (SUS from now) in the library sprite-buffer.
+
+- This feature will allow to reduce even more the memory footprint of the library in programs that use static sprite sets:
+each 1x1,1x2,2x2 sprite will be stored in 8,16,32 bytes instead of usual 48,72,120 bytes.
+Therefore, the library will use much less memory, but will be a bit slower.
+
+- SUS can be used with our without previous option for Precomputed Sprites (PS from now).
+The behaviour of PS/nonPS is only affected in the kind of sprites stored in the library: unshifted with SUS, shifted without SUS.
+
+12th July: New examples to test/check this option are included.
+
+- TestLib-SUS.zxbas (for SUS and nonPS), and TestLib-PS-SUS.zxbas and sprites.bas (for SUS and PS).
+
 ## UPDATE 2021-05-04
 
 Accumulative update with precomputed sprites support.
