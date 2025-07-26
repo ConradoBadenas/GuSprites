@@ -19,6 +19,26 @@ load/unload sprites from the library as needed, you aren't restricted to a singl
 
 The library is completely free for use but a mention would be appreciated ;)
 
+## UPDATE 2025-07-14&16
+
+14th July: Added option and code to store Unshifted Sprites (US from now) in the library sprite-buffer.
+
+- Suggestions by author of the library (![gusmanb](https://github.com/gusmanb)) have been followed,
+and this feature was merged into original repository (https://github.com/gusmanb/GuSprites).
+
+- This feature will allow to reduce even more the memory footprint of the library in programs that use static sprite sets:
+each 1x1,1x2,2x2 sprite will be stored in 8,16,32 bytes instead of usual 48,72,120 bytes.
+Therefore, the library will use much less memory, but will be a bit slower.
+
+- US can be used only with option for Precomputed Sprites (PS from now),
+which implies that unshifted sprites MUST be included into the Sprites.zxbas file,
+and Create*Functions cannot be used with US.
+Also, if US is enabled but PS is not, then the library will enable PS automatically.
+
+16th July: New examples to test/check this option are included.
+
+- TestLib-US.zxbas and Sprites.zxbas (both for US).
+
 ## UPDATE 2021-05-04
 
 Accumulative update with precomputed sprites support.
