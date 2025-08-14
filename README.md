@@ -19,6 +19,21 @@ load/unload sprites from the library as needed, you aren't restricted to a singl
 
 The library is completely free for use but a mention would be appreciated ;)
 
+## UPDATE 2025-08-14
+
+Added the "WithClipping" version of the Draw*Sprite functions.
+
+With these new SUBs the programmer can Draw sprites that are partly off-screen.
+Also, no drawing and no error are produced if sprite is completely off-screen.
+This feature is only available when option SPRITE_XY_IN_PIXELS is enabled.
+These new SUBs "Draw1x1SpriteWithClipping", "Draw1x2SpriteWithClipping", and "Draw2x2SpriteWithClipping"
+use integer coordinates to handle negative and large positive values
+(for example, a 2x2 sprite could be partly drawn at X,Y=253,-13).
+
+This feature was suggested by ![Jose Rodriguez "Boriel"](https://github.com/boriel) on July 28th at the "Boriel ZX Basic" Telegram Group,
+completed&released on July 30th, and improved&released on August 1st at the same Group.
+Some extra testing by ![Sergio Morales "Menyiques"](https://github.com/Menyiques) indicates that it works fine.
+
 ## UPDATE 2025-07-25
 
 Added option and code to draw sprites in any place of the screen by using Sprite coordinates X,Y measured In Pixels.
