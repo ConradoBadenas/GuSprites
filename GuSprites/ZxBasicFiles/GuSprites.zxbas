@@ -863,6 +863,17 @@ CREATE_DRAW_OP:                             ;input: b = xrow, c = ycol, hl=sprit
 
 ;creates a draw op using the char data at de
 
+ld a, b
+cp 32
+ret nc  ;return if xrow >= 32
+;and a
+;ret m   ;return if xrow < 0
+ld a, c
+cp 24
+ret nc  ;return if yrow >= 24
+;and a
+;ret m   ;return if yrow < 0
+
 push hl
 push bc
 
@@ -1335,11 +1346,98 @@ jr nz, LOOP
 ret
 ENDP
 
+PROC
+
+UBYTE_COORDS_TO_BCHL:
+; N = 2 or 8 depending on SPRITE_XY_IN_PIXELS is not defined or defined
+; input: a = sprite number, b = X [0,63] or [0,255], d = Y [0,47] or [0,191]
+;output: a = sprite number, b = XmodN = XintoCharPos, h = Int(X/N) = column
+;                           c = YmodN = YintoCharPos, l = Int(Y/N) = row
+ ex af,af'
+
+ ld a,b;    X
+ srl b
+#ifdef SPRITE_XY_IN_PIXELS
+    srl b
+    srl b
+#endif
+ ld h,b;    h = Int(X/N) = column
+#ifdef SPRITE_XY_IN_PIXELS
+    and 7
+#else
+    and 1
+#endif
+ ld b,a;    b = XmodN = XintoCharPos
+
+ ld a,d;    Y
+ srl d
+#ifdef SPRITE_XY_IN_PIXELS
+    srl d
+    srl d
+#endif
+ ld l,d;    l = Int(Y/N) = row
+#ifdef SPRITE_XY_IN_PIXELS
+    and 7
+#else
+    and 1
+#endif
+ ld c,a;    c = YmodN = YintoCharPos
+
+ ex af,af'
+ ret
+
+ENDP
+
+#ifdef SPRITE_XY_IN_PIXELS
+
+PROC
+
+INTEGER_COORDS_TO_BCHL:
+; input: a = sprite number, bc = X [-15,255], de = Y [-15,191]
+;output: a = sprite number, b = Xmod8 = XintoCharPos, h = Int(X/8) = column
+;                           c = Ymod8 = YintoCharPos, l = Int(Y/8) = row
+ ex af,af'
+
+ ld a,c;    If bc = -15, then c = -15 (and b = 255)
+ sra b
+ rra;       a = -8
+ sra b
+ rra;       a = -4
+ sra b
+ rra;       a = -2
+ ld h,a;    h = Int(X/8) = column
+ ld a,c
+ and 7
+ ld b,a;    b = Xmod8 = XintoCharPos
+
+ ld a,e;    If de = 191, then e = 191 (and d = 0)
+ sra d
+ rra;       a = 95
+ sra d
+ rra;       a = 47
+ sra d
+ rra;       a = 23
+ ld l,a;    l = Int(Y/8) = row
+ ld a,e
+ and 7
+ ld c,a;    c = Ymod8 = YintoCharPos
+
+ ex af,af'
+ ret
+
+ENDP
+
+#endif
+
 #ifdef ENABLE_1x1_SPRITES
 
 PROC
 LOCAL TEST_SHIFTS, HORIZONTAL_SHIFT, VERTICAL_SHIFT
-DRAW_1x1_SPRITE:            ;input: a = sprite number, b=x, c=y
+DRAW_1x1_SPRITE:
+; N = 2 or 8 depending on SPRITE_XY_IN_PIXELS is not defined or defined
+; input: a = sprite number, b = XmodN = XintoCharPos, h = Int(X/N) = column
+;                           c = YmodN = YintoCharPos, l = Int(Y/N) = row
+push hl
 
 dec a
 add a, a
@@ -1356,23 +1454,11 @@ ex af, af'; A'=8 for HSHIFT1to7_1xN_SPRITE and HSHIFT4_1xN_SPRITE
 #endif
 ld a, b
 or c
-#ifdef SPRITE_XY_IN_PIXELS
-and 7
-#else
-and 1
-#endif
 
 jp nz, TEST_SHIFTS
 
 ;unshifted sprite
-srl b                       ;calculate row/col
-srl c
-#ifdef SPRITE_XY_IN_PIXELS
-srl b
-srl c
-srl b
-srl c
-#endif
+pop bc                      ;calculate row/col
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ex de, hl
@@ -1387,40 +1473,23 @@ ret
 
 TEST_SHIFTS:
 ld a, c
-#ifdef SPRITE_XY_IN_PIXELS
-and 7;      A=Ymod8
-#else
-and 1
-#endif
+and a
 jp z, HORIZONTAL_SHIFT
 ld a, b
-#ifdef SPRITE_XY_IN_PIXELS
-and 7;      A=Xmod8
-#else
-and 1
-#endif
+and a
 jp z, VERTICAL_SHIFT
 
 ;diagonal shift
 
 #ifdef SPRITE_XY_IN_PIXELS
 ld ix, TEMP_1x1_SPRITE + 7
-;ld a, b These instructions are not needed
-;and 7   because A=Xmod8 here
+ld iyl, c
 call HSHIFT1to7_1xN_SPRITE
-ld a, c
-and 7
-ld e, a
+ld e, iyl
 ld d, 0;    DE = Ymod8 = 1,2,3,4,5,6,7
 ld hl, TEMP_1x1_SPRITE + 7
 sbc hl, de; HL=TEMP_1x1_SPRITE + 6,5,4,3,2,1,0
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate row/col
-srl c
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ld ix, TEMP_1x1_SPRITE + 4
@@ -1432,6 +1501,7 @@ add hl, de
 #endif
 
 #endif
+pop bc                      ;calculate row/col
 
 push bc                     ;store coords
 ;push hl                     ;store data address
@@ -1450,17 +1520,9 @@ HORIZONTAL_SHIFT:
 
 #ifdef SPRITE_XY_IN_PIXELS
 ld ix, TEMP_1x1_SPRITE + 7
-ld a, b
-and 7
 call HSHIFT1to7_1xN_SPRITE
 ld hl, TEMP_1x1_SPRITE + 7
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate col/row
-srl c
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ld ix, TEMP_1x1_SPRITE + 4
@@ -1472,6 +1534,7 @@ add hl, de                  ;hl now contains first line of real data
 #endif
 
 #endif
+pop bc                      ;calculate col/row
 
 push bc                     ;store coords
 push hl                     ;store data address
@@ -1495,36 +1558,24 @@ VERTICAL_SHIFT:
 #ifdef SPRITE_XY_IN_PIXELS
 ex de, hl
 ld de, TEMP_1x1_SPRITE + 7
-push bc
-LDI_8()
-pop bc
-srl b
-srl b
-srl b
 ld a, c
-and 7
+LDI_8()
 ld e, a
 ld d, 0;    DE = Ymod8 = 1,2,3,4,5,6,7
 ld hl, TEMP_1x1_SPRITE + 7
 sbc hl, de; HL=TEMP_1x1_SPRITE + 6,5,4,3,2,1,0
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate row/col
-srl c
 
 ex de, hl
 #ifdef STORE_UNSHIFTED_SPRITES
 ld de, TEMP_1x1_SPRITE + 4
-push bc
 LDI_8()
-pop bc
 ld hl, TEMP_1x1_SPRITE
 #endif
 
 #endif
+pop bc                      ;calculate row/col
+
 ld a, 2
 call DRAW_SPRITE_COLUMN
 
@@ -1537,7 +1588,11 @@ ENDP
 
 PROC
 LOCAL TEST_SHIFTS, HORIZONTAL_SHIFT, VERTICAL_SHIFT
-DRAW_1x2_SPRITE:            ;input: a = sprite number, b=x, c=y
+DRAW_1x2_SPRITE:
+; N = 2 or 8 depending on SPRITE_XY_IN_PIXELS is not defined or defined
+; input: a = sprite number, b = XmodN = XintoCharPos, h = Int(X/N) = column
+;                           c = YmodN = YintoCharPos, l = Int(Y/N) = row
+push hl
 
 dec a
 add a, a
@@ -1550,27 +1605,15 @@ READ_HL_POINTER(d,e)    ;de contains the sprite data
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ld a, 16
-ex af, af'; A'=8 for HSHIFT1to7_1xN_SPRITE and HSHIFT4_1xN_SPRITE
+ex af, af'; A'=16 for HSHIFT1to7_1xN_SPRITE and HSHIFT4_1xN_SPRITE
 #endif
 ld a, b
 or c
-#ifdef SPRITE_XY_IN_PIXELS
-and 7
-#else
-and 1
-#endif
 
 jp nz, TEST_SHIFTS
 
 ;unshifted sprite
-srl b                       ;calculate row/col
-srl c
-#ifdef SPRITE_XY_IN_PIXELS
-srl b
-srl c
-srl b
-srl c
-#endif
+pop bc                      ;calculate row/col
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ex de, hl
@@ -1586,40 +1629,23 @@ ret
 
 TEST_SHIFTS:
 ld a, c
-#ifdef SPRITE_XY_IN_PIXELS
-and 7;      A=Ymod8
-#else
-and 1
-#endif
+and a
 jp z, HORIZONTAL_SHIFT
 ld a, b
-#ifdef SPRITE_XY_IN_PIXELS
-and 7;      A=Xmod8
-#else
-and 1
-#endif
+and a
 jp z, VERTICAL_SHIFT
 
 ;diagonal shift
 
 #ifdef SPRITE_XY_IN_PIXELS
 ld ix, TEMP_1x2_SPRITE + 7
-;ld a, b These instructions are not needed
-;and 7   because A=Xmod8 here
+ld iyl, c
 call HSHIFT1to7_1xN_SPRITE
-ld a, c
-and 7
-ld e, a
+ld e, iyl
 ld d, 0;    DE = Ymod8 = 1,2,3,4,5,6,7
 ld hl, TEMP_1x2_SPRITE + 7
 sbc hl, de; HL=TEMP_1x2_SPRITE + 6,5,4,3,2,1,0
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate row/col
-srl c
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ld ix, TEMP_1x2_SPRITE + 4
@@ -1631,6 +1657,7 @@ add hl, de
 #endif
 
 #endif
+pop bc                      ;calculate row/col
 
 push bc                     ;store coords
 ld a, 3
@@ -1647,17 +1674,9 @@ HORIZONTAL_SHIFT:
 
 #ifdef SPRITE_XY_IN_PIXELS
 ld ix, TEMP_1x2_SPRITE + 7
-ld a, b
-and 7
 call HSHIFT1to7_1xN_SPRITE
 ld hl, TEMP_1x2_SPRITE + 7
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate col/row
-srl c
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ld ix, TEMP_1x2_SPRITE + 4
@@ -1669,6 +1688,7 @@ add hl, de                  ;hl now contains first line of real data
 #endif
 
 #endif
+pop bc                      ;calculate col/row
 
 push bc                     ;store coords
 ld a,2
@@ -1688,38 +1708,25 @@ VERTICAL_SHIFT:
 #ifdef SPRITE_XY_IN_PIXELS
 ex de, hl
 ld de, TEMP_1x2_SPRITE + 7
-push bc
-LDI_8()
-LDI_8()
-pop bc
-srl b
-srl b
-srl b
 ld a, c
-and 7
+LDI_8()
+LDI_8()
 ld e, a
 ld d, 0;    DE = Ymod8 = 1,2,3,4,5,6,7
 ld hl, TEMP_1x2_SPRITE + 7
 sbc hl, de; HL=TEMP_1x2_SPRITE + 6,5,4,3,2,1,0
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate row/col
-srl c
 
 ex de, hl
 #ifdef STORE_UNSHIFTED_SPRITES
 ld de, TEMP_1x2_SPRITE + 4
-push bc
 LDI_8()
 LDI_8()
-pop bc
 ld hl, TEMP_1x2_SPRITE
 #endif
 
 #endif
+pop bc                      ;calculate row/col
 ld a, 3
 call DRAW_SPRITE_COLUMN
 
@@ -1745,87 +1752,80 @@ ENDP
 PROC
 LOCAL A123, SHIFTL, SHIFTR, LOOP_L, LOOP_R, LDIXL, LDIXR
 HSHIFT1to7_1xN_SPRITE:
-; Input: A'=8 or 16, A=Xmod8, B=X, C=Y, IX=TEMPdest, DE=graphdir
-; Constraints: B should not be a multiple of 8
-; Output: B=Int(X/8), C=Y
-srl b
-srl b
-srl b
-push bc
-cp 4
-jr c, A123; 3/8
+; Input: a' = 8 or 16, b = Xmod8, c = Ymod8, ix = TEMPdest, de = graphdir
+; Destroys bc
+; Constraints: b should not be 0
+ ld a,b
+ cp 4
+ jr c,A123; 3/8
 
-;A4567      8-A=4,3,2,1 shifts to the left, 3bytes/shift
-ld c, a
-add a, a
-add a, c;   A=12,15,18,21
-ld hl, SHIFTL - 12
-ld b, 0
-ld c, a;    BC=A
-add hl, bc; HL=SHIFTL,SHIFTL+3,SHIFTL+6,SHIFTL+9
-ex af, af'; 8 or 16 in A
-ld b, a
-add a, 8;   A=16 or 24
-ld (LDIXL+2), a
+;A4567      8-a = 4,3,2,1 shifts to the left, 3bytes/shift
+ add a,a
+ add a,b;   a = 12,15,18,21
+ ld hl, SHIFTL - 12
+ ld b,0
+ ld c,a;    bc = a
+ add hl,bc; hl = SHIFTL,SHIFTL+3,SHIFTL+6,SHIFTL+9
+ ex af,af'; 8 or 16 in a
+ ld b,a
+ add a,8;   a = 16 or 24
+ ld (LDIXL+2),a
 
 LOOP_L:
-ld a, (de)
-ld c, a
-xor a
-jp (hl);    JP HL is 6TS quicker than JP nn
+ ld a,(de)
+ ld c,a
+ xor a
+ jp (hl);   jp hl is 6TS quicker than jp nn
 SHIFTL:
-rl c
-rla
-rl c;       SHIFTL+3
-rla
-rl c;       SHIFTL+6
-rla
-rl c;       SHIFTL+9
-rla
-ld (ix+0), a
+ rl c
+ rla
+ rl c;      SHIFTL+3
+ rla
+ rl c;      SHIFTL+6
+ rla
+ rl c;      SHIFTL+9
+ rla
+ ld (ix+0),a
 LDIXL:
-ld (ix+0), c; actually IX+16 or IX+24
-inc de
-inc ix
+ ld (ix+0),c; actually ix+16 or ix+24
+ inc de
+ inc ix
 djnz LOOP_L
+ ret
 
-pop bc
-ret
-
+;A123       a = 1,2,3 shifts to the right, 3bytes/shift
 A123:
-ld c, a;    A=1,2,3 shifts to the right, 3bytes/shift
-add a, a
-add a, c;   A=3,6,9
-ld hl, SHIFTR + 9
-ld b, 0
-ld c, a;    BC=A
-sbc hl, bc; HL=SHIFTR+6,SHIFTR+3,SHIFTR
-ex af, af'; 8 or 16 in A
-ld b, a
-add a, 8;   A=16 or 24
-ld (LDIXR+2), a
+ ld c,a
+ add a,a
+ add a,c;   a = 3,6,9
+ ld hl, SHIFTR + 9
+ ld b,0
+ ld c,a;    bc = a
+ sbc hl,bc; hl = SHIFTR+6,SHIFTR+3,SHIFTR
+ ex af,af'; 8 or 16 in A
+ ld b,a
+ add a,8;   a = 16 or 24
+ ld (LDIXR+2),a
 
 LOOP_R:
-ld a, (de)
-ld c, a
-xor a
-jp (hl);    JP HL is 6TS quicker than JP nn
+ ld a,(de)
+ ld c,a
+ xor a
+ jp (hl);   jp hl is 6TS quicker than jp nn
 SHIFTR:
-rr c
-rra
-rr c;       SHIFTR+3
-rra
-rr c;       SHIFTR+6
-rra
-ld (ix+0), c
+ rr c
+ rra
+ rr c;      SHIFTR+3
+ rra
+ rr c;      SHIFTR+6
+ rra
+ ld (ix+0),c
 LDIXR:
-ld (ix+0), a; actually IX+16 or IX+24
-inc de
-inc ix
-djnz LOOP_R
-
-pop bc
-ret
+ ld (ix+0),a; actually ix+16 or ix+24
+ inc de
+ inc ix
+ djnz LOOP_R
+ ret
 
 ENDP
 
@@ -1836,34 +1836,31 @@ ENDP
 PROC
 LOCAL LOOP, LDIX
 HSHIFT4_1xN_SPRITE:
-; Input: A'=8 or 16, IX=TEMPdest, DE=graphdir
-ld h, b
-ex af, af'; 8 or 16 in A
-ld b, a
-add a, 8;   A=16 or 24
-ld (LDIX+2), a
+; Input: a' = 8 or 16, ix = TEMPdest, de = graphdir
+ ex af,af'; 8 or 16 in A
+ ld b,a
+ add a,8;   a = 16 or 24
+ ld (LDIX+2),a
 
 LOOP:
-ld a, (de)
-ld l, a
-xor a
-rl l
-rla
-rl l
-rla
-rl l
-rla
-rl l
-rla
-ld (ix+0), a
+ ld a,(de)
+ ld l,a
+ xor a
+ rl l
+ rla
+ rl l
+ rla
+ rl l
+ rla
+ rl l
+ rla
+ ld (ix+0),a
 LDIX:
-ld (ix+0), l; actually IX+16 or IX+24
-inc de
-inc ix
+ ld (ix+0),l; actually ix+16 or ix+24
+ inc de
+ inc ix
 djnz LOOP
-
-ld b, h
-ret
+ ret
 
 ENDP
 
@@ -1877,7 +1874,11 @@ ENDP
 
 PROC
 LOCAL TEST_SHIFTS, HORIZONTAL_SHIFT, VERTICAL_SHIFT
-DRAW_2x2_SPRITE:            ;input: a = sprite number
+DRAW_2x2_SPRITE:
+; N = 2 or 8 depending on SPRITE_XY_IN_PIXELS is not defined or defined
+; input: a = sprite number, b = XmodN = XintoCharPos, h = Int(X/N) = column
+;                           c = YmodN = YintoCharPos, l = Int(Y/N) = row
+push hl
 
 dec a
 add a, a
@@ -1890,23 +1891,11 @@ READ_HL_POINTER(d,e)    ;de contains the sprite data
 
 ld a, b
 or c
-#ifdef SPRITE_XY_IN_PIXELS
-and 7
-#else
-and 1
-#endif
 
 jp nz, TEST_SHIFTS
 
 ;unshifted sprite
-srl b                       ;calculate row/col
-srl c
-#ifdef SPRITE_XY_IN_PIXELS
-srl b
-srl c
-srl b
-srl c
-#endif
+pop bc                      ;calculate row/col
 
 #ifdef STORE_UNSHIFTED_SPRITES
 ex de, hl
@@ -1933,39 +1922,21 @@ ret
 
 TEST_SHIFTS:
 ld a, c
-#ifdef SPRITE_XY_IN_PIXELS
-and 7;      A=Ymod8
-#else
-and 1
-#endif
+and a
 jp z, HORIZONTAL_SHIFT
 ld a, b
-#ifdef SPRITE_XY_IN_PIXELS
-and 7;      A=Xmod8
-#else
-and 1
-#endif
+and a
 jp z, VERTICAL_SHIFT
 
 ;diagonal shift
 
 #ifdef SPRITE_XY_IN_PIXELS
-;ld a, b These instructions are not needed
-;and 7   because A=Xmod8 here
 call HSHIFT1to7_2x2_SPRITE
-ld a, c
-and 7
-ld e, a
+ld e, c
 ld d, 0;    DE = Ymod8 = 1,2,3,4,5,6,7
 ld hl, TEMP_2x2_SPRITE + 7
 sbc hl, de; HL=TEMP_2x2_SPRITE + 6,5,4,3,2,1,0
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate row/col
-srl c
 
 #ifdef STORE_UNSHIFTED_SPRITES
 call HSHIFT4_2x2_SPRITE
@@ -1976,6 +1947,7 @@ add hl, de
 #endif
 
 #endif
+pop bc                      ;calculate row/col
 
 push bc                     ;store coords
 ld a, 3
@@ -1997,17 +1969,9 @@ ret
 HORIZONTAL_SHIFT:
 
 #ifdef SPRITE_XY_IN_PIXELS
-ld a, b
-and 7
 call HSHIFT1to7_2x2_SPRITE
 ld hl, TEMP_2x2_SPRITE + 7
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate col/row
-srl c
 
 #ifdef STORE_UNSHIFTED_SPRITES
 call HSHIFT4_2x2_SPRITE
@@ -2018,6 +1982,7 @@ add hl, de                  ;hl now contains first line of real data
 #endif
 
 #endif
+pop bc                      ;calculate col/row
 
 push bc                     ;store coords
 ld a,2                      ;column is 2 chars height
@@ -2045,29 +2010,17 @@ VERTICAL_SHIFT:
 #ifdef SPRITE_XY_IN_PIXELS
 ex de, hl
 ld de, TEMP_2x2_SPRITE + 7
-push bc
+ld a, c
 LDI_8()
 LDI_8()
 ld de, TEMP_2x2_SPRITE + 31
 LDI_8()
 LDI_8()
-pop bc
-srl b
-srl b
-srl b
-ld a, c
-and 7
 ld e, a
 ld d, 0;    DE = Ymod8 = 1,2,3,4,5,6,7
 ld hl, TEMP_2x2_SPRITE + 7
 sbc hl, de; HL=TEMP_2x2_SPRITE + 6,5,4,3,2,1,0
-srl c
-srl c
-srl c
 #else
-
-srl b                       ;calculate row/col
-srl c
 
 ex de, hl
 #ifdef STORE_UNSHIFTED_SPRITES
@@ -2083,6 +2036,8 @@ ld hl, TEMP_2x2_SPRITE
 #endif
 
 #endif
+pop bc                      ;calculate row/col
+
 ld a, 3
 push bc
 call DRAW_SPRITE_COLUMN     ;draw first row
@@ -2100,93 +2055,81 @@ ENDP
 PROC
 LOCAL A123, SHIFTL, SHIFTR, LOOP_L, LOOP_R
 HSHIFT1to7_2x2_SPRITE:
-; Input: A=Xmod8, B=X, C=Y, DE=graphdir
-; Constraints: B should not be a multiple of 8
-; Output: B=Int(X/8), C=Y
-srl b
-srl b
-srl b
-ld iyh, d
-ld iyl, e
-cp 4
-jr c, A123; 3/8
+; Input: b = Xmod8, c = Ymod8, de = graphdir
+; Destroys b
+; Constraints: b should not be 0
+ ld iyh,d
+ ld iyl,e
+ ld ix, TEMP_2x2_SPRITE + 7
+ ld a,b
+ cp 4
+ ld b,16
+ jr c,A123; 3/8
 
-;A4567      8-A=4,3,2,1 shifts to the left, 2bytes/shift
-add a, a;   A=8,10,12,14
-ld hl, SHIFTL - 8
-ld d, 0
-ld e, a;    DE=A
-add hl, de; HL=SHIFTL,SHIFTL+2,SHIFTL+4,SHIFTL+6
-ld (SHIFTL - 2), hl; JP HL
-ld a, b
-ex af, af'; Int(X/8) in A'
-ld ix, TEMP_2x2_SPRITE + 7
-ld b, 16
+;A4567      8-a = 4,3,2,1 shifts to the left, 2bytes/shift
+ add a,a;   a = 8,10,12,14
+ ld hl, SHIFTL - 8
+ ld d,0
+ ld e,a;    de = a
+ add hl,de; hl = SHIFTL,SHIFTL+2,SHIFTL+4,SHIFTL+6
+ ld (SHIFTL - 2),hl
 
 LOOP_L:
-ld h, (iy+0)
-ld l, (iy+16)
-xor a
-jp $1234;   JP SHIFTL,SHIFTL+2,SHIFTL+4,SHIFTL+6
+ ld h,(iy+0)
+ ld l,(iy+16)
+ xor a
+ jp $1234;  jp SHIFTL,SHIFTL+2,SHIFTL+4,SHIFTL+6
 SHIFTL:
-add hl, hl; ADD HL,HL is 5TS quicker than RL L + RL H
-rla
-add hl, hl; SHIFTL+2
-rla
-add hl, hl; SHIFTL+4
-rla
-add hl, hl; SHIFTL+6
-rla
-ld (ix+0), a
-ld (ix+24), h
-ld (ix+48), l
-inc iy
-inc ix
-djnz LOOP_L
+ add hl,hl; add hl,hl is 5TS quicker than rl l + rl h
+ rla
+ add hl,hl; SHIFTL+2
+ rla
+ add hl,hl; SHIFTL+4
+ rla
+ add hl,hl; SHIFTL+6
+ rla
+ ld (ix+0),a
+ ld (ix+24),h
+ ld (ix+48),l
+ inc iy
+ inc ix
+ djnz LOOP_L
+ ret
 
-ex af, af'
-ld b, a
-ret
-
+;A123       a = 1,2,3 shifts to the right, 5bytes/shift
 A123:
-ld e, a;    A=1,2,3 shifts to the right, 5bytes/shift
-add a, a
-add a, a
-add a, e;   A=5,10,15
-ld hl, SHIFTR + 15
-ld d, 0
-ld e, a;    DE=A
-sbc hl, de; HL=SHIFTR+10,SHIFTR+5,SHIFTR
-ld a, b
-ex af, af'; Int(X/8) in A'
-ld ix, TEMP_2x2_SPRITE + 7
-ld b, 16
+ ld e,a
+ add a,a
+ add a,a
+ add a,e;   a = 5,10,15
+ ld hl, SHIFTR + 15
+ ld d,0
+ ld e,a;    de = a
+ sbc hl,de; hl = SHIFTR+10,SHIFTR+5,SHIFTR
+ ld b,16
 
 LOOP_R:
-ld d, (iy+0)
-ld e, (iy+16)
-xor a
-jp (hl);    JP HL is 6TS quicker than JP nn
+ ld d,(iy+0)
+ ld e,(iy+16)
+ xor a
+ jp (hl);   jp hl is 6TS quicker than jp nn
 SHIFTR:
-rr d
-rr e
-rra
-rr d;       SHIFTR+5
-rr e
-rra
-rr d;       SHIFTR+10
-rr e
-rra
-ld (ix+0), d
-ld (ix+24), e
-ld (ix+48), a
-inc iy
-inc ix
-djnz LOOP_R
-
-ex af, af'
-ld b, a
-ret
+ rr d
+ rr e
+ rra
+ rr d;      SHIFTR+5
+ rr e
+ rra
+ rr d;      SHIFTR+10
+ rr e
+ rra
+ ld (ix+0),d
+ ld (ix+24),e
+ ld (ix+48),a
+ inc iy
+ inc ix
+ djnz LOOP_R
+ ret
 
 ENDP
 
@@ -2197,33 +2140,32 @@ ENDP
 PROC
 LOCAL LOOP
 HSHIFT4_2x2_SPRITE:
-ld iyh, d
-ld iyl, e
-ld ix, TEMP_2x2_SPRITE + 4
-ld d, b
-ld b, 16
+; Input: de = graphdir
+; Destroys b
+ ld iyh,d
+ ld iyl,e
+ ld ix, TEMP_2x2_SPRITE + 4
+ ld b,16
 
 LOOP:
-ld h, (iy+0)
-ld l, (iy+16)
-xor a
-add hl, hl
-rla
-add hl, hl
-rla
-add hl, hl
-rla
-add hl, hl
-rla
-ld (ix+0), a
-ld (ix+24), h
-ld (ix+48), l
-inc iy
-inc ix
-djnz LOOP
-
-ld b, d
-ret
+ ld h,(iy+0)
+ ld l,(iy+16)
+ xor a
+ add hl,hl; add hl,hl is 5TS quicker than rl l + rl h
+ rla
+ add hl,hl
+ rla
+ add hl,hl
+ rla
+ add hl,hl
+ rla
+ ld (ix+0),a
+ ld (ix+24),h
+ ld (ix+48),l
+ inc iy
+ inc ix
+ djnz LOOP
+ ret
 
 ENDP
 
@@ -2634,7 +2576,7 @@ asm
 
     push ix
     push iy
-    ld c, d
+    call UBYTE_COORDS_TO_BCHL
     call DRAW_1x1_SPRITE
     pop iy
     pop ix
@@ -2642,6 +2584,45 @@ asm
 end asm
 
 end sub
+
+#ifdef SPRITE_XY_IN_PIXELS
+
+sub fastcall Draw1x1SpriteWithClipping(SpriteNumber as uByte, X as Integer, Y as Integer)
+
+asm
+
+    pop hl
+    pop bc;     X should range between -7 and 255
+    pop de;     Y should range between -7 and 191
+    push hl
+    ld hl,7
+    add hl,bc;  HL should be in [0,262]
+    push bc
+    ld bc,-263; DE=65273
+    add hl,bc;  HL should be in [65273,65535] (noCarry)
+    pop bc
+    ret c;      HL is not good
+
+    ld hl,7
+    add hl,de;  HL should be in [0,198]
+    push de
+    ld de,-199; DE=65337
+    add hl,de;  HL should be in [65337,65535] (noCarry)
+    pop de
+    ret c;      HL is not good
+
+    push ix
+    push iy
+    call INTEGER_COORDS_TO_BCHL
+    call DRAW_1x1_SPRITE
+    pop iy
+    pop ix
+
+end asm
+
+end sub
+
+#endif
 
 #endif
 
@@ -2680,6 +2661,7 @@ asm
     push ix
     push iy
     ld c, d
+    call UBYTE_COORDS_TO_BCHL
     call DRAW_1x2_SPRITE
     pop iy
     pop ix
@@ -2687,6 +2669,45 @@ asm
 end asm
 
 end sub
+
+#ifdef SPRITE_XY_IN_PIXELS
+
+sub fastcall Draw1x2SpriteWithClipping(SpriteNumber as uByte, X as Integer, Y as Integer)
+
+asm
+
+    pop hl
+    pop bc;     X should range between -7 and 255
+    pop de;     Y should range between -15 and 191
+    push hl
+    ld hl,7
+    add hl,bc;  HL should be in [0,262]
+    push bc
+    ld bc,-263; DE=65273
+    add hl,bc;  HL should be in [65273,65535] (noCarry)
+    pop bc
+    ret c;      HL is not good
+
+    ld hl,15
+    add hl,de;  HL should be in [0,206]
+    push de
+    ld de,-207; DE=65329
+    add hl,de;  HL should be in [65329,65535] (noCarry)
+    pop de
+    ret c;      HL is not good
+
+    push ix
+    push iy
+    call INTEGER_COORDS_TO_BCHL
+    call DRAW_1x2_SPRITE
+    pop iy
+    pop ix
+
+end asm
+
+end sub
+
+#endif
 
 #endif
 
@@ -2724,7 +2745,7 @@ asm
     exx
     push ix
     push iy
-    ld c, d
+    call UBYTE_COORDS_TO_BCHL
     call DRAW_2x2_SPRITE
     pop iy
     pop ix
@@ -2732,6 +2753,45 @@ asm
 end asm
 
 end sub
+
+#ifdef SPRITE_XY_IN_PIXELS
+
+sub fastcall Draw2x2SpriteWithClipping(SpriteNumber as uByte, X as Integer, Y as Integer)
+
+asm
+
+    pop hl
+    pop bc;     X should range between -15 and 255
+    pop de;     Y should range between -15 and 191
+    push hl
+    ld hl,15
+    add hl,bc;  HL should be in [0,270]
+    push bc
+    ld bc,-271; DE=65265
+    add hl,bc;  HL should be in [65265,65535] (noCarry)
+    pop bc
+    ret c;      HL is not good
+
+    ld hl,15
+    add hl,de;  HL should be in [0,206]
+    push de
+    ld de,-207; DE=65329
+    add hl,de;  HL should be in [65329,65535] (noCarry)
+    pop de
+    ret c;      HL is not good
+
+    push ix
+    push iy
+    call INTEGER_COORDS_TO_BCHL
+    call DRAW_2x2_SPRITE
+    pop iy
+    pop ix
+
+end asm
+
+end sub
+
+#endif
 
 #endif
 
