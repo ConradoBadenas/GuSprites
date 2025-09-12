@@ -19,6 +19,25 @@ load/unload sprites from the library as needed, you aren't restricted to a singl
 
 The library is completely free for use but a mention would be appreciated ;)
 
+## UPDATE 2025-09-12
+
+New feature: TileAnimated. Now, animated tiles can be obtained more accurately when executing RenderFrame. This has been included:
+
+- A new parameter, MAX_ANIMATED_TILES_PER_SCREEN.
+- An assembly routine, SET_TILE_ANIMATED, which changes nothing on screen when routine is called.
+- Three Basic subroutines, in the spirit of TileChecked, to use the TileAnimated feature: SetTileAnimated, SetTiledObjectAnimated, and FillWithTileAnimated.
+- An example program to see what this feature does: TestLib-TileAnimated.zxbas and TestLib-TileAnimated.tap. You can comment/uncomment lines 114-116 of ZXBasic program (please, check that 2 lines are commented and 1 is uncommented before compiling) to check that using SetTile/FillWithTile or SetTileChecked/FillWithTileChecked does not produce a perfect animation (you might have to slow down your emulator to see the imperfection), and that animation by SetTileAnimated/FillWithTileAnimated is accurate.
+- An analysis program to understand how tiles and sprites interact when creating DrawOps, and what information is stored in DRAW_OPS_A and DRAW_OPS_B (via CURRENT_DRAW_OPS and CURRENT_CLEAR_OPS): analisis.zxbas (in Spanish) and analisis.tap.
+
+New feature: a new mechanism to choose the features of this library. Since now, users had to define/undefine the parameters included at the beginning of GuSprites.zxbas to chose which features to use (PRECOMPUTED_SPRITES, ENABLE_PRINT, MERGE_TILES, etc.), which implied to make changes in the file GuSprites.zxbas and, more importantly, that these changes had to be manually repeated when downloading a new version of the library. Now, all user-defined parameters are left undefined so that the user should define those needed before including GuSprites.zxbas into their Boriel ZX Basic programs. These user-defined parameters are included between line 1 (CONFIG DEFINES) and line 93 (END CONFIG DEFINES) with corresponding explanations (many by Agustín Gimenez Bernad, aka Dr. Gusman). Also, programs that relied on parameters defined with default values (in previous versions of GuSprites.zxbas) will compile as before (backward compatibility). Please, note:
+
+- The parameter ALL_NEEDED_PARAMETERS_ALREADY_DEFINED. When not defined (default), ENABLE_PRINT, ENABLE_1x1_SPRITES, ..., and ENABLE_INTERRUPTS are defined to default values in previous versions of GuSprites.zxbas (see lines 98-110 of GuSprites.zxbas). When defined, all parameters are left undefined, and you should define into your Boriel ZX Basic program (not in the library) the parameters that you need.
+- Some example programs to see how to operate with ALL_NEEDED_PARAMETERS_ALREADY_DEFINED undefined (TestLib-Clipping.zxbas, TestLib-TileAnimated.zxbas, TestLib.zxbas, and TestPrintString.zxbas) and defined (TestLib-Everything.zxbas, and analisis.zxbas).
+
+Old feature, made visible and definible: ROM_CHARSET. Now you can let ROM_CHARSET undefined (which defines it to be 3C00h; please, note https://skoolkid.github.io/rom/asm/3D00.html), or you can use your own character set by setting this parameter appropriately (which lets you use 256 different characters if you define them).
+
+Some minor changes in the code and comments. If you want to track them, please visit https://github.com/ConradoBadenas/GuSprites/commit/85d9527fd6725f6e85c693fd514cff7c11b1b6b8
+
 ## UPDATE 2025-08-14
 
 Added the "WithClipping" version of the Draw*Sprite functions.
