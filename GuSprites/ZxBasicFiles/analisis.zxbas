@@ -1,0 +1,162 @@
+REM @options --array-base 1 --string-base 1 --optimize 4 --org 32768 --heap-size 256 --explicit --strict -D HIDE_LOAD_MSG
+
+#define ENABLE_1x1_SPRITES
+#define TOTAL_1x1_SPRITES 1
+#define ONSCREEN_1x1_SPRITES 1
+#define ENABLE_TILES
+#define MERGE_TILES
+#define MAX_ANIMATED_TILES_PER_SCREEN 3
+#define ENABLE_INTERRUPTS
+#define ALL_NEEDED_PARAMETERS_ALREADY_DEFINED
+#include "GuSprites.zxbas"
+
+function fastcall CDC() as uByte
+asm
+ ld a,(CURRENT_DRAW_COUNT)
+end asm
+end function
+
+function fastcall CDO() as uInteger
+asm
+ ld hl,(CURRENT_DRAW_OPS)
+end asm
+end function
+
+function fastcall CDM() as uInteger
+asm
+ ld hl,(CURRENT_DRAW_MAP)
+end asm
+end function
+
+function fastcall CCC() as uByte
+asm
+ ld a,(CURRENT_CLEAR_COUNT)
+end asm
+end function
+
+function fastcall CCO() as uInteger
+asm
+ ld hl,(CURRENT_CLEAR_OPS)
+end asm
+end function
+
+function fastcall CCM() as uInteger
+asm
+ ld hl,(CURRENT_CLEAR_MAP)
+end asm
+end function
+
+sub PrintC_DC_COM(num as uByte, dir as uInteger, map as uInteger, skip as uByte)
+ dim i,j as Byte
+ dim d0,d1,d2 as uInteger
+ for i=0 to 4
+    print peek(map+i*256/8);
+ next i
+ print inverse 1;num;
+ for i=0 to num-1
+    d0=dir+i*5
+    d1=peek(uinteger,d0+2)
+    j=peek(d0+4)
+    print " ";ink j;peek(uinteger,d0);" ";d1;" ";j;
+    d2=16387+i+skip*32
+    for j=0 to 7
+        poke d2+j*256,peek(d1+j)
+    next j
+    poke d2+6144,56
+ next i
+ for i=num to 10
+    d2=16387+i+skip*32
+    for j=0 to 7
+        poke d2+j*256,0
+    next j
+ next i
+end sub
+
+border 2
+cls
+
+Dim sprite(8) as uByte => { 64,70,70,64,8,244,2,1 }
+
+Dim tileSet(8,8) as uByte => { _ 
+    {0,0,0,0,0,0,0,0}, _
+    { 0,60,66,66,66,66,60,0 }, _
+    { 0,24,24,36,66,66,126,0 }, _
+    { 12,34,44,65,93,234,26,0 }, _
+    { 240,240,240,240,0,0,0,0 }, _
+    { 15,15,15,15,0,0,0,0 }, _
+    { 0,0,0,0,15,15,15,15 }, _
+    { 0,0,0,0,240,240,240,240 } _
+}
+
+Dim sNumber as uByte
+
+InitGFXLib()
+
+SetTileset(@tileSet)
+
+dim x as uByte
+dim y as uByte
+
+for y = 0 to 23
+        
+    if y mod 2 = 0 then
+        for x = 0 to 31 step 2
+            SetTile(1, 52, x, y)
+        next x
+    else
+        for x = 1 to 31 step 2
+            SetTile(2, 56, x, y)
+        next x
+    end if
+
+next y
+
+sNumber = Create1x1Sprite(@sprite)
+
+dim xs(1) as uByte
+dim ys(1) as uByte
+dim xss(1) as byte
+dim yss(1) as byte
+dim b as ubyte
+dim c as byte
+xss(1) = 0
+yss(1) = 1
+
+xs(1) = 0
+ys(1) = 0
+
+c=0:do
+
+for b = 0 to 0
+    xs(b * 3 + 1) = xs(b * 3 + 1) + xss(b * 3 + 1)
+    ys(b * 3 + 1) = ys(b * 3 + 1) + yss(b * 3 + 1)
+    if ys(b * 3 + 1) > 7 or ys(b * 3 + 1) < 1 then yss(b * 3 + 1) = -yss(b * 3 + 1)
+    if xs(b * 3 + 1) > 7 or xs(b * 3 + 1) < 1 then xss(b * 3 + 1) = -xss(b * 3 + 1)
+next b
+
+'if c mod 3 = 0 then         FillWithTile(4 + c/3, 1, 3, 56 + c/3, 0, 0)
+'if c mod 3 = 0 then  FillWithTileChecked(4 + c/3, 1, 3, 56 + c/3, 0, 0)
+if c mod 3 = 0 then FillWithTileAnimated(4 + c/3, 1, 3, 56 + c/3, 0, 0)
+c = (c+1) mod 12
+
+print at 8,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,at 8,0;
+PrintC_DC_COM( CDC() , CDO() , CDM() ,0)
+print ,,:print
+PrintC_DC_COM( CCC() , CCO() , CCM() ,1)
+print ,,:print
+
+for b = 0 to 0
+    Draw1x1Sprite(sNumber, xs(b * 3 + 1), ys(b * 3 + 1))
+next b
+
+PrintC_DC_COM( CDC() , CDO() , CDM() ,4)
+print ,,:print
+PrintC_DC_COM( CCC() , CCO() , CCM() ,5)
+print ,,:print
+
+RenderFrame()
+
+pause 0
+
+loop
+
