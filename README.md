@@ -34,9 +34,13 @@ New feature: a new mechanism to choose the features of this library. Since now, 
 - The parameter ALL_NEEDED_PARAMETERS_ALREADY_DEFINED. When not defined (default), ENABLE_PRINT, ENABLE_1x1_SPRITES, ..., and ENABLE_INTERRUPTS are defined to default values in previous versions of GuSprites.zxbas (see lines 98-110 of GuSprites.zxbas). When defined, all parameters are left undefined, and you should define into your Boriel ZX Basic program (not in the library) the parameters that you need.
 - Some example programs to see how to operate with ALL_NEEDED_PARAMETERS_ALREADY_DEFINED undefined (TestLib-Clipping.zxbas, TestLib-TileAnimated.zxbas, TestLib.zxbas, and TestPrintString.zxbas) and defined (TestLib-Everything.zxbas, and analisis.zxbas).
 
+New feature: the name of the sprites file can be set with parameter SPRITES_FILE. You can set it to your prefered filename, such as "coolestspritesintheworld.zxbas". If not defined, GuSprites.zxbas will set it to "sprites.bas", "Sprites.zxbas" or "", depending on other parameters.
+
 Old feature, made visible and definible: ROM_CHARSET. Now you can let ROM_CHARSET undefined (which defines it to be 3C00h; please, note https://skoolkid.github.io/rom/asm/3D00.html), or you can use your own character set by setting this parameter appropriately (which lets you use 256 different characters if you define them).
 
-Some minor changes in the code and comments. If you want to track them, please visit https://github.com/ConradoBadenas/GuSprites/commit/85d9527fd6725f6e85c693fd514cff7c11b1b6b8
+Some minor changes in the code and comments of the assembly routine CREATE_DRAW_OP.
+
+Deleted files: TestLib-PS-SUS.zxbas, TestLib-PS-SXIP.zxbas, TestLib-PS-SXIP3.zxbas and TestLib-SUS.zxbas (because they had cryptic names and their purpose was to illustrate features that really were not so important), and all ZIP files (because a better place to put TAP files was found: GuSprites/TapeFiles).
 
 ## UPDATE 2025-08-14
 
