@@ -22,7 +22,7 @@ Dim sNumber3 as uByte
 
 InitGFXLib()
 
-SetTileset(@tileSet)
+SetTileset(@tileSet(1, 1))
 
 dim x as uByte
 dim y as uByte
@@ -43,9 +43,9 @@ next y
 
 FillWithTile(3,2,2,CREATE_ATTRIB(6,2,1,0),4,4)
 
-sNumber = Create1x1Sprite(@sprite)
-sNumber2 = Create1x2Sprite(@sprite2)
-sNumber3 = Create2x2Sprite(@sprite3)
+sNumber = Create1x1Sprite(@sprite(1))
+sNumber2 = Create1x2Sprite(@sprite2(1))
+sNumber3 = Create2x2Sprite(@sprite3(1))
 
 dim xs(12) as uByte
 dim ys(12) as uByte
